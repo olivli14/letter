@@ -4,31 +4,36 @@ pragma solidity ^0.8.28;
 // Uncomment this line to use console.log
 // import "hardhat/console.sol";
 
-contract Lock {
-    uint public unlockTime;
-    address payable public owner;
+contract Letter {
+    struct Message {
+        address sender;
+        string text;
+        string color;
+        uint256 timestamp;
+    }
 
-    event Withdrawal(uint amount, uint when);
+    Message[] public messages;
+    uint public totalLetters;
+    uint256 public basePrice = 0.01 ether;
+    uint256 public colorPrice = 0.005 ether;
 
-    constructor(uint _unlockTime) payable {
-        require(
-            block.timestamp < _unlockTime,
-            "Unlock time should be in the future"
-        );
+    event NewMessage(address indexed sender, string text, string color, uint256 timestamp);
 
-        unlockTime = _unlockTime;
-        owner = payable(msg.sender);
+    function writeMessage(string memory _text, string memory _color) public payable {
+        totalLetters++;
+        uint256 requiredPayment = bytes(_color).length > 0 ? basePrice + colorPrice : basePrice;
+        require(msg.value >= requiredPayment, "Not enough ETH sent");
+
+        messages.push(Message(msg.sender, _text, _color, block.timestamp));
+
+        emit NewMessage(msg.sender, _text, _color, block.timestamp);
+    }
+
+    function getMessages() public view returns (Message[] memory) {
+        return messages;
     }
 
     function withdraw() public {
-        // Uncomment this line, and the import of "hardhat/console.sol", to print a log in your terminal
-        // console.log("Unlock time is %o and block timestamp is %o", unlockTime, block.timestamp);
-
-        require(block.timestamp >= unlockTime, "You can't withdraw yet");
-        require(msg.sender == owner, "You aren't the owner");
-
-        emit Withdrawal(address(this).balance, block.timestamp);
-
-        owner.transfer(address(this).balance);
+        payable(msg.sender).transfer(address(this).balance);
     }
 }
